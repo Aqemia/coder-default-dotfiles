@@ -36,7 +36,7 @@ export PATH=$PATH:$HOME/.cargo/bin
 export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
 
 # Custom aliases
-source ~/.bash_it/aliases/smana.bash
+source ~/.bash_it/aliases/custom.bash
 
 # FZF
 [ -f ~/.fzf.bash ] && source ~/.fzf.bash
