@@ -50,7 +50,21 @@ export TG_PROVIDER_CACHE=true
 ZSHRC
   fi
 
-  chsh -s /usr/bin/zsh || true
+  # chsh fails in containers (PAM requires a password). Fall back to exec-ing zsh
+  # from ~/.bash_profile so any bash login shell (coder ssh, web terminal) switches
+  # to zsh automatically.
+  ZSH_PATH=$(command -v zsh)
+  chsh -s "$ZSH_PATH" || true
+
+  # Break symlink if present (may exist when switching from bash), then append exec
+  [ -L ~/.bash_profile ] && cp -L ~/.bash_profile ~/.bash_profile.tmp && mv ~/.bash_profile.tmp ~/.bash_profile 2>/dev/null || true
+  if ! grep -q 'AQEMIA_SHELL_SWITCH' ~/.bash_profile 2>/dev/null; then
+    cat >> ~/.bash_profile <<PROFILE
+
+# AQEMIA_SHELL_SWITCH - exec into zsh when chsh is unavailable (container environments)
+[ -n "\$PS1" ] && exec "$ZSH_PATH" -l
+PROFILE
+  fi
 
 else
   # --- Install bash-it ---
@@ -90,6 +104,10 @@ else
   ln -sf "$DOTFILES_DIR/aliases/custom.bash" ~/.bash_it/aliases/custom.bash
 
   # --- Ensure .bash_profile sources .bashrc (login shells) ---
+  # Remove any zsh exec switch before symlinking (handles zsh→bash switch)
+  if [ -f ~/.bash_profile ] && ! [ -L ~/.bash_profile ]; then
+    sed -i '/# AQEMIA_SHELL_SWITCH/,+2d' ~/.bash_profile 2>/dev/null || true
+  fi
   ln -sf "$DOTFILES_DIR/.bash_profile" ~/.bash_profile
 
   # --- Ensure .bashrc loads bash-it ---
