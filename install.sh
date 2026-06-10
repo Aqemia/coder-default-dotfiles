@@ -111,6 +111,27 @@ else
   fi
   ln -sf "$DOTFILES_DIR/.bash_profile" ~/.bash_profile
 
+  # --- Prepend interactive-shell guard to ~/.bashrc ---
+  # Bash sources ~/.bashrc even non-interactively when stdin is a network
+  # socket (rshd/sshd detection — `coder ssh` / Tailscale SSH trigger this).
+  # Without an early return, bash-it's `bind` calls error with "line editing
+  # not enabled", and any git config in user-sourced files (e.g. a personal
+  # ~/.personalize.bashrc) can race the workspace's git startup script on
+  # ~/.gitconfig.lock. Prepending the standard Ubuntu skel guard makes
+  # everything below it interactive-only. Idempotent via marker.
+  if [ -f ~/.bashrc ] && ! grep -q 'AQEMIA_INTERACTIVE_GUARD' ~/.bashrc; then
+    tmp=$(mktemp)
+    {
+      printf '%s\n' '# AQEMIA_INTERACTIVE_GUARD: return early when not interactive'
+      printf '%s\n' 'case $- in'
+      printf '%s\n' '    *i*) ;;'
+      printf '%s\n' '      *) return;;'
+      printf '%s\n\n' 'esac'
+      cat ~/.bashrc
+    } > "$tmp"
+    mv "$tmp" ~/.bashrc
+  fi
+
   # --- Ensure .bashrc loads bash-it ---
   if ! grep -q 'BASH_IT' ~/.bashrc 2>/dev/null; then
       cat >> ~/.bashrc <<'BASHRC'
